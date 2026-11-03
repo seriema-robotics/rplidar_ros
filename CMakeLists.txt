@@ -1,7 +1,7 @@
 ################################################################################
 # Set minimum required version of cmake, project name and compile options
 ################################################################################
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10...3.28)
 project(rplidar_ros)
 
 if(NOT CMAKE_CXX_STANDARD)
@@ -43,6 +43,7 @@ endif()
 # Find ament packages and libraries for ament and system dependencies
 ################################################################################
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_target_dependencies QUIET)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -56,27 +57,30 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 )
 
-add_executable(rplidar_node	src/rplidar_node.cpp ${RPLIDAR_SDK_SRC})
-# target_link_libraries(rplidar_node ${ament_cmake_LIBRARIES})
-ament_target_dependencies(rplidar_node
-  rclcpp
-  std_srvs
-  sensor_msgs
-)
+macro(rplidar_link_dependencies target_name)
+  if(COMMAND ament_target_dependencies)
+    ament_target_dependencies(${target_name}
+      rclcpp
+      std_srvs
+      sensor_msgs
+    )
+  else()
+    target_link_libraries(${target_name} PUBLIC
+      rclcpp::rclcpp
+      ${std_srvs_TARGETS}
+      ${sensor_msgs_TARGETS}
+    )
+  endif()
+endmacro()
+
+add_executable(rplidar_node src/rplidar_node.cpp ${RPLIDAR_SDK_SRC})
+rplidar_link_dependencies(rplidar_node)
 
 add_executable(rplidar_composition src/rplidar_node.cpp ${RPLIDAR_SDK_SRC})
-ament_target_dependencies(rplidar_composition
-  rclcpp
-  std_srvs
-  sensor_msgs
-)
+rplidar_link_dependencies(rplidar_composition)
 
 add_executable(rplidar_client src/rplidar_client.cpp)
-ament_target_dependencies(rplidar_client
-  rclcpp
-  std_srvs
-  sensor_msgs
-)
+rplidar_link_dependencies(rplidar_client)
 ################################################################################
 # Install
 ################################################################################
